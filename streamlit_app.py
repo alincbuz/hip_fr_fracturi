@@ -11,8 +11,7 @@ st.markdown('<h2 style="color:gray;">The image classification model classifies i
 st.markdown('<h3 style="color:gray;"> intertrohanterian - 0,  fara fractura - 1, trohanterian - 2</h3>', unsafe_allow_html=True)
 
 
-# background image to streamlit
-@st.experimental_memo()
+@st.cache_data
 def get_base64_of_bin_file(bin_file):
     with open(bin_file, 'rb') as f:
         data = f.read()
@@ -21,12 +20,13 @@ def get_base64_of_bin_file(bin_file):
 
 def set_png_as_page_bg(png_file):
     bin_str = get_base64_of_bin_file(png_file)
-    page_bg_img = '''    <style>
+    page_bg_img = '''
+    <style>
     .stApp {
-    background-image: url("data:image/png;base64,%s");
+    background-image: url("data:image/webp;base64,%s");
     background-size: cover;
     background-repeat: no-repeat;
-    background-attachment: scroll; # doesn't work
+    background-attachment: scroll;
     }
     </style>
     ''' % bin_str
@@ -34,28 +34,31 @@ def set_png_as_page_bg(png_file):
     st.markdown(page_bg_img, unsafe_allow_html=True)
     return
 
+
 set_png_as_page_bg('background.webp')
 
-# load the trained model.
-# vgg_16_-saved-model-24-acc-0.70.hdf5
-# inceptionv3_-saved-model-16-loss-0.49
 
-model = tf.keras.models.load_model('vgg_16_-saved-model-24-acc-0.70.hdf5')
+@st.cache_resource
+def load_my_model():
+    return tf.keras.models.load_model('vgg_16_-saved-model-24-acc-0.70.hdf5')
 
 
-upload = st.file_uploader('Insert image for classification', type=['png', 'jpg'])
+model = load_my_model()
+
+upload = st.file_uploader('Insert image for classification', type=['png', 'jpg', 'jpeg'])
 c1, c2 = st.columns(2)
+
 if upload is not None:
     image = load_img(upload, target_size=(150, 150))
     image = np.asarray(image)
-    # reshape data for the model
     image = image.reshape((1, image.shape[0], image.shape[1], image.shape[2]))
+
     c1.header('Input Image')
     c1.image(image, clamp=True)
 
-    # prediction on model
-    preds = model.predict(image)
+    preds = model.predict(image, verbose=0)
     pred_classes = np.argmax(preds, axis=1)
+
     c2.header('Output')
     c2.subheader('Predicted class :')
     c2.write(pred_classes[0])
